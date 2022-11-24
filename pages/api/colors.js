@@ -3,7 +3,7 @@ import {prepareBase64ForJimp} from "../../lib/base64";
 
 export default async function handler(req, res) {
     if (req.body.base64) {
-        Jimp.read(Buffer.from(prepareBase64ForJimp(req.body.base64), 'base64')).then(function (lenna) {
+        await Jimp.read(Buffer.from(prepareBase64ForJimp(req.body.base64), 'base64')).then(function (lenna) {
             const width = lenna.bitmap.width;
             const height = lenna.bitmap.height;
             const colors = new Set();
