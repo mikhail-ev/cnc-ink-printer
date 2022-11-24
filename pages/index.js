@@ -85,6 +85,7 @@ export default function Home() {
         var reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = function () {
+            console.log(reader.result);
             setOriginalImage(reader.result);
         };
         reader.onerror = function (error) {

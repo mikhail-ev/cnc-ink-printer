@@ -24,3 +24,11 @@ export default async function handler(req, res) {
         console.log('body was:', JSON.stringify(req.body));
     }
 }
+
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '12mb' // Set desired value here
+        }
+    },
+}

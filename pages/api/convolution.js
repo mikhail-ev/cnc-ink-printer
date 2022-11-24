@@ -33,14 +33,11 @@ class ConnectedMatrix {
     iterateAround(x, y, callback) {
         const radius = this.radius;
         for (let dx = -radius; dx <= radius; ++dx) {
-            if (dx === 0) {
-                continue;
-            }
             if (!this.cells[x + dx]) {
                 continue;
             }
             for (let dy = -radius; dy <= radius; ++dy) {
-                if (dy === 0) {
+                if (dy === 0 && dx === 0) {
                     continue;
                 }
                 const xIndex = x + dx;
@@ -72,6 +69,7 @@ async function defaultAlgorithm(lenna, canvasWidth, canvasHeight, brushSize, res
     const mmToPixelRatio = canvasWidth / lenna.bitmap.width;
     const pixelWithResolutionToStepRatio = (lenna.bitmap.width / resolution) / horizontalSteps;
 
+    console.log(`MM to pixel ratio: ${mmToPixelRatio}`);
     console.log(`Image width: ${lenna.bitmap.width}, steps: ${horizontalSteps}, ratio: ${pixelToStepRatio}`)
     console.log(`Image width (corrected for resolution): ${lenna.bitmap.width / resolution}, steps: ${horizontalSteps}, ratio: ${pixelWithResolutionToStepRatio}`)
 
@@ -119,7 +117,6 @@ async function defaultAlgorithm(lenna, canvasWidth, canvasHeight, brushSize, res
     const imageWidth = lenna.bitmap.width;
     const imageHeight = lenna.bitmap.height;
 
-    const matrix = new ConnectedMatrix(imageWidth, imageHeight, brushRadius);
 
     for (let x = 0; x < imageWidth; ++x) {
         for (let y = 0; y < imageHeight; ++y) {
@@ -132,14 +129,18 @@ async function defaultAlgorithm(lenna, canvasWidth, canvasHeight, brushSize, res
         }
     }
 
+    const matrix = new ConnectedMatrix(horizontalSteps, verticalSteps, brushRadius);
+
     const length = blackPixels.length
-    for(let i = 0; i < blackPixels.length; ++i) {
+    for(let i = 0; i < length; ++i) {
         const [x, y] = blackPixels[i];
-        if (matrix.cells[x][y].blackConnectionsCount > 1) {
+        const canvasX = Math.round(x / pixelToStepRatio);
+        const canvasY = Math.round(y / pixelToStepRatio);
+        if (matrix.cells[canvasX][canvasY].blackConnectionsCount > 0) {
             continue;
         }
-        result.push([x * mmToPixelRatio, y * mmToPixelRatio])
-        matrix.paint(x, y);
+        result.push([canvasX * resolution, canvasY * resolution])
+        matrix.paint(canvasX, canvasY);
         ++printsCount;
     }
 
@@ -182,5 +183,8 @@ export default async function handler(req, res) {
 export const config = {
     api: {
         responseLimit: false,
+        bodyParser: {
+            sizeLimit: '12mb' // Set desired value here
+        }
     },
 }
