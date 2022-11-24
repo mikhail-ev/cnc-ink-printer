@@ -33,15 +33,21 @@ class ConnectedMatrix {
     iterateAround(x, y, callback) {
         const radius = this.radius;
         for (let dx = -radius; dx <= radius; ++dx) {
+            if (dx === 0) {
+                continue;
+            }
             if (!this.cells[x + dx]) {
                 continue;
             }
             for (let dy = -radius; dy <= radius; ++dy) {
+                if (dy === 0) {
+                    continue;
+                }
                 const xIndex = x + dx;
                 const yIndex = y + dy;
                 const item = this.cells[xIndex][yIndex];
                 if (item) {
-                    callback(item, [xIndex, yIndex]);
+                    callback(item);
                 }
             }
         }
@@ -61,17 +67,20 @@ async function defaultAlgorithm(lenna, canvasWidth, canvasHeight, brushSize, res
     const startTime = Date.now();
     let diffTime = 0;
 
-    const pixelToStepRatio = lenna.bitmap.width / horizontalSteps;
+    const pixelToStepRatio = lenna.bitmap.width / horizontalSteps; // rename
+    const stepToPixelRatio = horizontalSteps / lenna.bitmap.width; // rename
+    const mmToPixelRatio = canvasWidth / lenna.bitmap.width;
     const pixelWithResolutionToStepRatio = (lenna.bitmap.width / resolution) / horizontalSteps;
 
     console.log(`Image width: ${lenna.bitmap.width}, steps: ${horizontalSteps}, ratio: ${pixelToStepRatio}`)
     console.log(`Image width (corrected for resolution): ${lenna.bitmap.width / resolution}, steps: ${horizontalSteps}, ratio: ${pixelWithResolutionToStepRatio}`)
 
-    const matrix = new ConnectedMatrix(horizontalSteps, verticalSteps, brushRadius);
 
-    const resizeStartTime = Date.now();
-    lenna.resize(horizontalSteps, Jimp.AUTO);
-    const resizeTime = Date.now() - resizeStartTime;
+    // const resizeStartTime = Date.now();
+    // lenna.resize(horizontalSteps, Jimp.AUTO);
+    // const resizeTime = Date.now() - resizeStartTime;
+
+    const blackPixels = [];
 
     const black = {r: 0, g: 0, b: 0, a: 255}
 
@@ -107,52 +116,37 @@ async function defaultAlgorithm(lenna, canvasWidth, canvasHeight, brushSize, res
         return decision
     }
 
-    let counter = 0;
-    console.log(horizontalSteps * verticalSteps, horizontalSteps, verticalSteps);
-    for (let x = 0; x < horizontalSteps; ++x) {
-        for (let y = 0; y < verticalSteps; ++y) {
-            ++counter;
-            if (counter % 1000000 === 0) {
-                console.log(`Parsed ${counter}`);
-            }
+    const imageWidth = lenna.bitmap.width;
+    const imageHeight = lenna.bitmap.height;
 
+    const matrix = new ConnectedMatrix(imageWidth, imageHeight, brushRadius);
+
+    for (let x = 0; x < imageWidth; ++x) {
+        for (let y = 0; y < imageHeight; ++y) {
             if (!isPixelBlack(x, y)) {
                 continue;
             }
             ++blackDotsCount;
 
-            const overpaintOnBlack = matrix.cells[x][y].blackConnectionsCount / brushAffectedPixels > 0.1
-
-            if (overpaintOnBlack) {
-                continue;
-            }
-
-            // let blackPixelsAround = 0;
-            // let iteratedPixelsAround = 0;
-            // matrix.iterateAround(x, y, (item, [itemX, itemY]) => {
-            //     if (isPixelBlack(itemX, itemY)) {
-            //         blackPixelsAround++;
-            //     }
-            //     iteratedPixelsAround++;
-            // });
-            //
-            // const whitePixelsAround = iteratedPixelsAround - blackPixelsAround;
-            // const overpaintOnWhite = whitePixelsAround / iteratedPixelsAround > 0.05
-            //
-            // if (overpaintOnWhite) {
-            //     continue;
-            // }
-
-            matrix.paint(x, y);
-
-            result.push([x * resolution, y * resolution]);
-            ++printsCount;
+            blackPixels.push([x, y]);
         }
     }
 
+    const length = blackPixels.length
+    for(let i = 0; i < blackPixels.length; ++i) {
+        const [x, y] = blackPixels[i];
+        if (matrix.cells[x][y].blackConnectionsCount > 1) {
+            continue;
+        }
+        result.push([x * mmToPixelRatio, y * mmToPixelRatio])
+        matrix.paint(x, y);
+        ++printsCount;
+    }
+
+
     const endTime = Date.now();
     console.log(
-        `Overall dots: ${horizontalSteps * verticalSteps}, black: ${blackDotsCount}, prints: ${printsCount}, elapsed time: ${(endTime - startTime) / 1000}, diff time: ${diffTime / 1000}, resize time: ${resizeTime / 1000}`
+        `Overall dots: ${imageWidth * imageHeight}, black: ${blackDotsCount}, prints: ${printsCount}, elapsed time: ${(endTime - startTime) / 1000}, diff time: ${diffTime / 1000}`
     );
     return result;
 }
